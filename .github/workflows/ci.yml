@@ -1,0 +1,27 @@
+name: Validate Sidequest
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image (includes tests)
+        run: docker build -t sidequest:ci .
+      - name: Smoke test production server
+        run: |
+          docker run -d --name sidequest-ci -p 8080:80 sidequest:ci
+          trap 'docker logs sidequest-ci; docker rm -f sidequest-ci' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:8080/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/health
+          curl -fsS http://localhost:8080/ | grep -q 'Sidequest'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/assets/not-found.js)" = 404
+          curl -fsS http://localhost:8080/play/snake/ | grep -q 'Snake'
+          curl -fsS http://localhost:8080/mentions-legales/ | grep -q 'Birost'
+          curl -fsS http://localhost:8080/sitemap.xml | grep -q 'https://jeu.birostweb.fr/play/snake/'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/inconnue/)" = 404
+          curl -fsSI http://localhost:8080/ | grep -qi 'Content-Security-Policy:'
