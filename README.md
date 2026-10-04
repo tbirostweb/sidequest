@@ -52,11 +52,11 @@ Le dépôt local est déjà initialisé. Si aucun remote `origin` n’existe, le
 4. Régler le type de build sur **Dockerfile**.
 5. Indiquer `Dockerfile` comme chemin de Dockerfile et `.` comme contexte Docker (racine du dépôt ; chemin de build `/` si ce champ est proposé).
 6. Lancer **Deploy**.
-7. Ajouter un domaine pointant vers le serveur Dokploy, avec le **port interne 80**, puis activer HTTPS.
+7. Ajouter un domaine pointant vers le serveur Dokploy, avec le **port interne 8080** (image Nginx non-root ; ancien port 80 à remplacer dans Dokploy), puis activer HTTPS.
 
 Aucune variable d’environnement, base de données ou volume n’est nécessaire. Le démarrage de Nginx est déjà défini dans le Dockerfile : ne pas configurer `npm run dev` comme commande de production. Le domaine doit servir ce projet à la racine `/`, pas sous un préfixe tel que `/sidequest/`.
 
-Le contrôle de santé est disponible sur `/health` (HTTP 200). Le Dockerfile le configure automatiquement. Le port 80 est le port du conteneur, pas le port 5173 utilisé en développement.
+Le contrôle de santé est disponible sur `/health` (HTTP 200). Le Dockerfile le configure automatiquement. Le port 8080 est le port du conteneur (Nginx non-root, `USER nginx`), pas le port 5173 utilisé en développement.
 
 ### 3. Mises à jour
 
@@ -70,7 +70,7 @@ Avec Docker démarré :
 
 ```sh
 docker build -t sidequest:local .
-docker run --rm -p 8080:80 sidequest:local
+docker run --rm -p 8080:8080 sidequest:local
 ```
 
 Ouvrir `http://localhost:8080`. Contrôler `http://localhost:8080/health`. L’image lance les tests puis compile les jeux ; l’étape finale ne contient que Nginx et les fichiers compilés. Les ressources JavaScript/CSS versionnées sont mises en cache ; le document HTML est revalidé pour récupérer les nouvelles versions.
@@ -122,11 +122,16 @@ Domaine configuré : **https://jeu.birostweb.fr** (`src/seo.js`). Le build produ
 
 L’audit détaillé et les réserves d’infrastructure/légales sont dans [docs/AUDIT-PRODUCTION.md](docs/AUDIT-PRODUCTION.md). Dans Dokploy, vérifier la politique de redémarrage (condition `any`) et la rétention des journaux du proxy ; un HEALTHCHECK seul ne définit pas de politique de redémarrage.
 
-Pour reproduire le contrôle navigateur, après avoir démarré le conteneur sur le port 8087 :
+Pour reproduire le contrôle navigateur, après avoir démarré le conteneur (`-p 8087:8080`) :
 
 ```sh
 npx playwright install chromium
 node scripts/check-browser.mjs
 ```
 
-Une autre adresse peut être fournie via `TEST_URL`. Les rapports Lighthouse de travail restent dans `reports/`, exclus de Git et de l’image Docker.
+Une autre adresse peut être fournie via `TEST_URL`. Ce contrôle (`npm run test:e2e`) est exécuté en CI après le smoke HTTP. Les rapports Lighthouse de travail restent dans `reports/`, exclus de Git et de l’image Docker.
+
+
+## Durcissement conteneur (Dokploy)
+
+À configurer côté Dokploy/Docker, non vérifiable depuis le dépôt : système de fichiers en lecture seule avec tmpfs sur `/tmp`, `cap_drop: ALL`, `no-new-privileges`, limites CPU/RAM, politique de redémarrage `any`. Aucun secret ni variable d'environnement n'est requis (voir `.env.example`). Mettre à jour les digests d'images du Dockerfile lors des revues de sécurité.
