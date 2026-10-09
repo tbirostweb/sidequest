@@ -6,7 +6,7 @@ defineProps({ privacy: Boolean })
   <a href="/" class="legal-back">Retour aux jeux</a>
   <span class="eyebrow">SIDEQUEST / INFORMATIONS</span>
   <h1>{{ privacy ? 'Politique de confidentialité' : 'Mentions légales' }}</h1>
-  <p class="legal-date">Dernière mise à jour : 4 octobre 2026.</p>
+  <p class="legal-date">Dernière mise à jour : 10 septembre 2026.</p>
   <template v-if="!privacy">
    <h2>Éditeur et responsable de la publication</h2>
    <p>Sidequest, accessible sur jeu.birostweb.fr, est édité par <strong>Théo Birost</strong>, entrepreneur individuel (EI), sous le nom commercial Birostweb. Directeur de la publication : Théo Birost.</p>
